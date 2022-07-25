@@ -1,0 +1,38 @@
+namespace: {{k8s-namespace}}
+
+securityGroupAccess:
+  - securityGroup: {{securitygroup-name}}
+    objectId: {{securitygroup-objectid}}
+
+replicaCount: 2
+
+autoscaling:
+  enabled: false
+  minReplicas: 2
+
+image:
+  repository: {{k8s-namespace}}/miniurl
+  httpPort: 5000
+
+azureIdentity:
+  enabled: true
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 2048Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+configFiles:
+  enabled: true
+
+configMaps:
+  - mountPath: /app/appsettings.json
+    subPath: appsettings.json
+    readOnly: true
+
+ingress:
+  enabled: true
+  host: {{domain-url}}

@@ -1,0 +1,138 @@
+trigger:
+  - develop
+
+name: $(Rev:r)
+
+resources:
+  repositories:
+    - repository: pipeline
+      type: git
+      name: Infra-Cloud/infra-devops-pipelines
+
+stages:
+  - stage: Build
+    displayName: Build MiniURL
+    jobs:
+      - job: Build
+        pool:
+          name: "DevOps"
+          demands:
+            - Agent.OS -equals Linux
+        steps:
+          - template: build/build-dotnetcore-csproj.yaml@pipeline
+            parameters:
+              #dotnetVersion: 3.1.x
+              ProjectPath: MiniURL
+              ProjectName: MiniURL.csproj
+              NugetConfigPresent: true
+              NugetFileName: nuget.config
+              BuildConfiguration: Release
+              TestPresent: false
+              forKubernetes: true
+              KubernetesSourceFolder: $(Build.SourcesDirectory)/kubernetes
+              IncludeConfigFiles: true
+              ConfigSourceFolder: $(Build.SourcesDirectory)
+              ConfigFiles: |
+                MiniURL/appsettings.json
+
+          - template: build/build-dockerfile.yaml@pipeline
+            parameters:
+              BuildFromArtifact: true
+              ContainerRegistry: {{ContainerRegistryName}}
+              ContainerName: {{team/application-name}}
+              DockerfilePath: MiniURL/Dockerfile
+
+  - stage: Development
+    displayName: Deploy to Development
+    dependsOn: Build
+    jobs:
+      - deployment: Deploy
+        displayName: Deploy Development
+        pool:
+          name: DevOps
+        variables:
+          - group: "MiniURL - DEV" # Azure Devops Library Name from where values will be fetched
+          - name: replicas
+            value: 2
+          - name: hostname 
+            value: {{domain-url}}
+        environment: {{K8S-ServiceName}}.{{Namespace}}
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: deploy/deploy-kubernetes.yaml@pipeline
+                  parameters:
+                    UseHelm: true
+                    ReleaseName: minu-url-release
+                    HelmOverrideFiles: $(Pipeline.Workspace)/drop/kubernetes/helm-values.yaml
+                    HelmOverrides: |
+                      replicaCount:$(replicas)
+                      ingress.host:$(hostname)
+                      azureIdentity.clientID:$(ClientId)
+                      azureIdentity.clientSecret:$(ClientSecret)
+                      envVars.ASPNETCORE_ENVIRONMENT:Development
+
+  - stage: Stage
+    displayName: Deploy to Stage
+    dependsOn: Build
+    jobs:
+      - deployment: Stage
+        displayName: Deploy Stage
+        pool:
+          name: DevOps
+        variables:
+          - group: "MiniURL - STAGE" # Azure Devops Library Name from where values will be fetched
+          - name: replicas
+            value: 2
+          - name: hostname
+            value: miniurl.stage.com
+        environment: {{K8S-ServiceName}}.{{Namespace}}
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: deploy/deploy-kubernetes.yaml@pipeline
+                  parameters:
+                    # default SourcesDirectory is $(Pipeline.Workspace)/drop
+                    # SourcesDirectory: "$(Pipeline.Workspace)/drop"
+                    UseHelm: true
+                    ReleaseName: minu-url-release
+                    HelmOverrideFiles: $(Pipeline.Workspace)/drop/kubernetes/helm-values.yaml
+                    HelmOverrides: |
+                      replicaCount:$(replicas)
+                      ingress.host:$(hostname)
+                      azureIdentity.clientID:$(ClientId)
+                      azureIdentity.clientSecret:$(ClientSecret)
+
+  - stage: Production
+    displayName: Deploy to Production
+    dependsOn: Build
+    jobs:
+      - deployment: Stage
+        displayName: Deploy Production
+        pool:
+          name: DevOps
+        variables:
+          - group:  "MiniURL - PROD" # Azure Devops Library Name from where values will be fetched
+          - name: replicas
+            value: 2
+          - name: hostname
+            value: miniurl.com
+        environment: {{K8S-ServiceName}}.{{Namespace}}
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - template: deploy/deploy-kubernetes.yaml@pipeline
+                  parameters:
+                    # default SourcesDirectory is $(Pipeline.Workspace)/drop
+                    # SourcesDirectory: "$(Pipeline.Workspace)/drop"
+                    UseHelm: true
+                    ReleaseName: minu-url-release
+                    HelmOverrideFiles: $(Pipeline.Workspace)/drop/kubernetes/helm-values.yaml
+                    HelmOverrides: |
+                      replicaCount:$(replicas)
+                      ingress.host:$(hostname)
+                      azureIdentity.clientID:$(ClientId)
+                      azureIdentity.clientSecret:$(ClientSecret)
