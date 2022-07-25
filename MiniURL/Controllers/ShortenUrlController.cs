@@ -26,6 +26,12 @@ namespace MiniURL.Controllers
             _shortenUrlDataValidator = shortenUrlDataValidator;
         }
 
+
+        /// <summary>
+        /// POST Api to shorten the url
+        /// </summary>
+        /// <param>ShortenUrl Data</param>        
+        /// <returns>string</returns>
         [HttpPost]
         public async Task<IActionResult> Post([FromBody] ShortenUrlData data)
         {

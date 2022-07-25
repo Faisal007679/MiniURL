@@ -3,12 +3,6 @@ trigger:
 
 name: $(Rev:r)
 
-resources:
-  repositories:
-    - repository: pipeline
-      type: git
-      name: Infra-Cloud/infra-devops-pipelines
-
 stages:
   - stage: Build
     displayName: Build MiniURL
@@ -41,6 +35,22 @@ stages:
               ContainerRegistry: {{ContainerRegistryName}}
               ContainerName: {{team/application-name}}
               DockerfilePath: MiniURL/Dockerfile
+
+      - job: Test
+        displayName: "Run tests"
+        steps:
+          - task: DotNetCoreCLI@2
+            displayName: "Restore solution"
+            inputs:
+              command: "restore"
+              projects: "**/*.csproj"
+              feedsToUse: "select"
+          - task: DotNetCoreCLI@2
+            displayName: "Run unit tests"
+            inputs:
+              command: "test"
+              projects: "**/*.Test.csproj"
+              arguments: "--no-restore"
 
   - stage: Development
     displayName: Deploy to Development
@@ -94,8 +104,6 @@ stages:
               steps:
                 - template: deploy/deploy-kubernetes.yaml@pipeline
                   parameters:
-                    # default SourcesDirectory is $(Pipeline.Workspace)/drop
-                    # SourcesDirectory: "$(Pipeline.Workspace)/drop"
                     UseHelm: true
                     ReleaseName: minu-url-release
                     HelmOverrideFiles: $(Pipeline.Workspace)/drop/kubernetes/helm-values.yaml
@@ -126,8 +134,6 @@ stages:
               steps:
                 - template: deploy/deploy-kubernetes.yaml@pipeline
                   parameters:
-                    # default SourcesDirectory is $(Pipeline.Workspace)/drop
-                    # SourcesDirectory: "$(Pipeline.Workspace)/drop"
                     UseHelm: true
                     ReleaseName: minu-url-release
                     HelmOverrideFiles: $(Pipeline.Workspace)/drop/kubernetes/helm-values.yaml
