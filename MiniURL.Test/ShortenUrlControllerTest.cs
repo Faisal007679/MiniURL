@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using MiniURL.Controllers;
 using MiniURL.Framework;
 using MiniURL.Models;
+using MiniURL.ModelValidator;
 using Moq;
 using System.Threading.Tasks;
 using Xunit;
@@ -16,16 +17,16 @@ namespace MiniURL.Test
         private readonly ShortenUrlController _shortenUrlController;
         private readonly IConfiguration _configuration;
         private readonly MiniURLService _miniURLService;
-        private readonly Mock<IValidator<ShortenUrlData>> _mockShortenUrlDataValidator;
+        private readonly ShortenUrlDataValidator _validator;
         public ShortenUrlControllerTest()
         {
             _configuration = InitConfiguration();
-            _mockShortenUrlDataValidator = new Mock<IValidator<ShortenUrlData>>();
+            _validator = new ShortenUrlDataValidator();
             _miniURLService = new MiniURLService(_configuration);
 
             var mock = new Mock<ILogger<ShortenUrlController>>();
             ILogger<ShortenUrlController> logger = mock.Object;
-            _shortenUrlController = new ShortenUrlController(logger, _miniURLService, _mockShortenUrlDataValidator.Object);
+            _shortenUrlController = new ShortenUrlController(logger, _miniURLService, _validator);
         }
 
         [Fact]
