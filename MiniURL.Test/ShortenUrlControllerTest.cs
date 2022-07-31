@@ -53,7 +53,7 @@ namespace MiniURL.Test
             var response = result.Value as string;
             Assert.NotNull(response);
 
-            //Assert.Equal("OriginalURL is required field.", response);
+            Assert.Equal("OriginalURL is required field.", response);
         }
 
 
@@ -69,7 +69,7 @@ namespace MiniURL.Test
             var response = result.Value as string;
             Assert.NotNull(response);
             
-            //Assert.Equal("OriginalURL has invalid URI.", result.Value as string);
+            Assert.Equal("OriginalURL has invalid URI.", result.Value as string);
         }
 
 
